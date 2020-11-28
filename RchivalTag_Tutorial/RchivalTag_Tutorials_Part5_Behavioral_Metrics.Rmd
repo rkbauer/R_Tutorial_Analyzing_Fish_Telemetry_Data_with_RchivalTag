@@ -1,0 +1,113 @@
+---
+title: "RchivalTag Package Tutorial"
+subtitle: 'Part 5 - Behavioral metrics'
+author: "Dr. Robert Bauer | Data Scientist & Fishery Biologist"
+date: "February 10, 2020"
+bibliography: library.bib
+output: html_document
+tags: Archival Tagging data, Satellite tags, Wildlife Computers, LOTEK
+---
+
+### Principle (Pop-up)-Archival Tagging Data:
+
+1. TAD, TAT plots per individual and all animals, season
+2. PDT plot with depth tracks
+3. time series data (e.g. depth and temperature)
+4. tracks (Geolocation Estimates and Likelihood Areas from light levels, depth and temperature)
+
+### Getting started:
+
+```{r}
+## install or load package
+# install.packages("RchivalTag")
+library("RchivalTag")
+
+## Package overview:
+?RchivalTag 
+help(package="RchivalTag") ## list of functions
+```
+
+### Behavioral metrics
+Behavioral metrics are an important component of many ecological model approaches such as habitat models or behavior models. The choice of a suitable metric depends on the research question (e.g. the percentage of time spent in a specific depth layer [@Bauer2017b, @Bauer2020], or the average depth preferences). However, in many cases, the data availability limits this choice. This concerns in particular pop-up archival tags with often limited transmission capacities.
+
+One interesting behavioral metric is the average depth at which our tagged animal was located. We could estimate the average depth (per day) from depth time series data. Histogram data could represent a 
+
+
+Another
+
+In this 5th tutorial, we will learn how to 
+
+#### How to get behavioral metrics from histogram data:
+
+Although histogram datasets are an exemple of percentage data and thus not considered continuous, we can derive continuous behavioral metrics from it that can for instance be used for model approaches such as GAMs etc. [@Bauer2017b]. Particular useful and accurate in this regard is the average depth and it's standarrd deviation that is automatically generated when we read in the histogram data.
+
+
+option is to estimate 
+
+
+
+```{r}
+# get histogram data with histogram-derived average depth and temperature values
+hist_dat_1 <- read_histos(system.file("example_files/104659-Histos.csv",package="RchivalTag"))
+hist_df <- hist_dat_1$TAD$DeployID.15P1019_Ptt.104659$df
+View(head(hist_df))
+avg1 <- hist_df$avg # avgerage depth of the tag infered from the histogram data
+
+
+plot(hist_df$date, hist_df$avg, type="l", lwd=2, ylim=rev(range(hist_df$avg)), xlab="Date", ylab="Depth (m)")
+```
+
+But how accurate is this estimation? We can check this with time series data:
+
+### Cross validating the accuracy of behavioral metrics with depth time series data:
+RchivalTag comes with it's own functions to read time series data (from Wildlife Comouters and LOTEK).
+
+```{r}
+ts_file <- system.file("example_files/104659-Series.csv",package="RchivalTag")
+ts_df <- read_TS(ts_file)
+head(ts_df)
+```
+
+We will address time series data (plots) more in detail in the next tutorial. For the moment let's focus on how to cross validate the accuracy of behavioral metrics with depth time series data.
+One approach to do so is to aggregate the data and calculate the average depth and its standard deviation.
+
+```{r, collapse=TRUE}
+library(plyr)
+metrics <- ddply(ts_df,.(DeployID, date),function(x) c(avg=mean(x$Depth,na.rm=T),SD=sd(x$Depth,na.rm=T)))
+head(metrics)
+```
+
+However, we can also generate histogram data from depth and temperature time series data!
+In this case, the average/SD-estimates are calculated directly from the time series data and not from the binned histogram data.
+
+```{r, collapse=TRUE}
+tad_breaks <- c(0, 2, 5, 10, 20, 50, 100, 200, 300, 400, 600, 2000)
+hist_dat_ts <- ts2histos(ts_df, tad_breaks = tad_breaks)
+hist_ts <- hist_dat_ts$TAD$merged$df
+head(hist_ts[,c("DeployID", "date","avg","SD")])
+plot(hist_ts$date, hist_ts$avg, type="l", lwd=2, ylim=rev(range(hist_ts$avg)), xlab="Date", ylab="Depth (m)")
+
+```
+  
+While the two approaches (manual aggregation and transformation to histogram) yield identical results, let's check how the average depth values from the original histogram and time series data are related: 
+```{r, collapse=TRUE}
+avg1 <- hist_dat_1$TAD$DeployID.15P1019_Ptt.104659$df$avg
+avg2 <- hist_dat_ts$TAD$merged$df$avg
+plot(avg1, avg2) 
+avg1-avg2
+abline(0,b = 1,lty="dotted")
+cor(avg1,avg2)
+mean(avg1-avg2)
+```
+As we can see, the data is highly proportional and thus correlated. However, the accuracy of the average depth estimates from the original histogram data are somewhat low. It generally depends on the selection of the histogram bins and in relation to that the depth preferences of the fish species. So be cautious when using and interpreting these estimates.
+
+
+```
+
+
+
+
+
+
+
+

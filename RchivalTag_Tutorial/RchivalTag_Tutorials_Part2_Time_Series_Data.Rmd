@@ -1,0 +1,290 @@
+---
+title: "RchivalTag Package Tutorial"
+subtitle: 'Part 2 - (Interactive) Time Series Data Plots'
+
+author:
+- name: "Dr. Robert Bauer | Data Scientist & Fishery Biologist"
+  affiliation: 1
+
+address:
+- code: 1
+  #address: Alaska Fisheries Science Center, NOAA Fisheries, Seattle, Washington, USA 
+  email: marine.biologging@gmail.com
+  orcid: https://orcid.org/0000-0003-4224-8023
+  
+date: "February 10, 2020"
+bibliography: library.bib
+tags: Archival Tagging data, Satellite tags, Wildlife Computers, LOTEK
+
+
+output: 
+  uswebr::html_uswds:
+    number_sections: FALSE
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+```
+
+### Getting started:
+
+```{r, collapse=TRUE}
+## install or load package
+# install.packages("RchivalTag")
+library("RchivalTag")
+
+## Package overview:
+?RchivalTag 
+help(package="RchivalTag") ## list of functions
+```
+
+### How to load Time Series data from archival and Pop-up archival tags:
+Recovered Archival Tags provide researchers with detailed information about the vertical behavior of fish and other aquatic animals such as turtles and mammals. Pop-Up archival tags can also transmit (subsets of) such data (e.g. miniPATs from Wildlife Computers) to the ARGOS satellite system, and thus do not need to be recovered. We therefore distinguish between high resolution  time series data (3-10s sampling resolution from recovered tags, e.g. #####-Archive.csv files from recovered miniPATs, mk10, mk9 etc.) and and low resolution time series data (150-600s sampling resolution from transmitted data sets, e.g. #####-Series.csv files from miniPATs). 
+Time Series data is incredibly powerful and may include data from different sensors (depth, temperature, acceleration, etc.). Here we will focus on Depth Time Series data.
+To read this data, you might be tempted to read in the data via R's read.table or read.csv functions:
+
+```{r, collapse=TRUE}
+## read example transmitted Depth Temperature Time Series data:
+ts_file <- system.file("example_files/104659-Series.csv",package="RchivalTag")
+ts_df <- read.csv(ts_file)
+str(ts_df,1)
+head(ts_df,3)
+```
+This works out perfectly, but I do not encourage you to do so since some transmitted data sets have gaps. Such gaps are not indicated in the transmitted data sets. In addition, we should convert the Day and Time columns to a datetime format so that we can plot and analyze our data with ease. 
+Fortunately, `RchivalTag` has it's own function to read time series data from different manufacturers (e.g. Wildlife Computers and LOTEK) that fills gaps with `NAs` and does the datetime conversion automatically.
+
+```{r, collapse=TRUE}
+## read example transmitted Depth Temperature Time Series data via RchivalTag:
+ts_file <- system.file("example_files/104659-Series.csv",package="RchivalTag")
+ts_df <- read_TS(ts_file)
+str(ts_df,1)
+```
+We can see that the time series data has been converted. We have a date and datetime column in Date and POSIXct format (instead of the unformatted Day and Time columns before). In addition, the dataframe now starts with the "2016-08-07 00:00:00" while before it was "2016-08-07 08:10:00", so the gaps have been completed even those before the tags deployment. This is an important step, also for other conversions (e.g. to histogram data) that we will discuss later. 
+
+
+I would like to further highlight the advanced date time conversion capabilities of `RchivalTag` since this can be a tricky problem (e.g. when the data is in a time and or local language format). For example, this is the same data but with another date time format. Actually, the time format in the different tagging data files often differs (e.g. in case of Wildlife Computers), so the next code is actually pretty interesting. 
+  
+Let's try to read the same data in another time format.
+
+```{r, collapse=TRUE}
+## other date_format:
+ts_file2 <- system.file("example_files/104659-Series_date_format2.csv",package="RchivalTag")
+ts_miniPAT2 <- try(read_TS(ts_file2)) # run to see error message
+```
+
+So `RchivalTag` tells us what to do. We need to adjust the standard date format to '07-08-2016 08:10:00'.
+Let's do that:
+
+```{r, collapse=TRUE}
+## changing the date format and 
+ts_miniPAT2 <- read_TS(ts_file2, date_format = "%d-%m-%Y %H:%M:%S")
+str(ts_miniPAT2,1)
+```
+
+This worked out!
+However, sometimes the data is formatted in another language format as indicated earlier:
+```{r, collapse=TRUE}
+## other language format and separator:
+ts_file_ES <- system.file("example_files/104659-Series_date_format_ES.csv",package="RchivalTag") # spanish date format
+ts_miniPAT_ES <- try(read_TS(ts_file_ES)) # run to see error message
+```
+
+
+In this case we need to change the seperator, the date and language format  to '07/ene/16;08:30:00'. Turns out this is a spanish format.
+```{r, collapse=TRUE}
+ts_miniPAT_ES <- read_TS(ts_file_ES,skip=1,sep=";",header = TRUE, 
+                         date_format = "%d/%b/%y %H:%M:%S",lang_format = "es") # spanish date format
+head(ts_miniPAT_ES,2)
+```
+
+As mentioned earlier, `read_TS` also works with data from other manufacturers (currently only LOTEK). Here is the same data in the LOTEK PSAT Dive format:
+
+```{r, collapse=TRUE}
+## load same data in LOTEK format
+ts_file <- system.file("example_files/104659_PSAT_Dive_Log.csv",package="RchivalTag")
+ts_df <- read_TS(ts_file,date_format="%m/%d/%Y %H:%M:%S")
+head(ts_df,2) ## attention no identifier (Ptt, Serial, DeployID) included!
+```
+This worked out, however, LOTEK does not include the DeployID and Ptt information in their time series data. We therefore need to add this information manually. This will be important when further converting and visualizing our data.
+
+```{r}
+## add missing DeployID and PTT information to LOTEK depth temperature time series data:
+ts_df$DeployID <- ts_df$Ptt <- "104659"
+```
+
+### How to plot time series data:
+
+Now let's plot this data. `RchivalTag` has several plotting functions for time series data. These include:
+
+*  `plot_DepthTS`
+*  `empty.plot_TS`
+*  `plot_DepthTempTS`
+*  `plot_DepthTempTS_resampled`
+*  `plot_DepthTempTS_resampled_PDT`
+*  `dy_DepthTS`
+
+```{r, collapse=TRUE}
+plot_DepthTS(ts_df)
+```
+
+This function has a bunch of arguments that we will go through. Some basic arguments like `xlim``to select the dates to be plotted:
+```{r, collapse=TRUE}
+plot_DepthTS(ts_df,xlim = "2016-08-10")
+
+```
+
+Another way to produce this figure is via the `empty.plotTS` function that will draw an empty plot first and then gives us a line.
+
+```{r}
+### example for empty.plotTS and adding time series data as line:
+empty.plot_TS(xlim="2016-08-10",ylim=c(100,0))
+lines(ts_df$datetime, ts_df$Depth)
+```
+
+Many aquatic animals show diurnal migration patterns so we might be interested in shading the night-time and twilight periods. To do so we need to add at least the Longitude and Latitude information since the sunrise and sunset timings change differ with location. Let's do this manually. 
+
+```{r, collapse=TRUE}
+### plot also day night time information:
+ts_df$Lon <- 5; ts_df$Lat <- 43 # manual example, please take Lon/Lat data from (GPE3) model outputs for your analysis instead. (check get_geopos-function from RchivalTag)
+ts_df <- classify_DayTime(ts_df)
+plot_DepthTS(ts_df,xlim = c("2016-08-10","2016-08-15"),plot_DayTimePeriods = T)
+```
+
+We can do the same figure with an empty plot and the vertical track as line on top:
+```{r, collapse=TRUE}
+### alternative:
+plot_DepthTS(ts_df, xlim=c("2016-08-10","2016-08-12"), plot_DayTimePeriods = TRUE, type='n')
+lines(ts_df$datetime, ts_df$Depth)
+```
+
+### Interactive time series data plots
+  
+The `dy_DepthTS` function allows us to to the same figures but with the interactive interface of the `dygraphs` package.
+```{r, collapse=TRUE}
+ts_file <- system.file("example_files/104659-Series.csv",package="RchivalTag")
+ts_df <- read_TS(ts_file)
+ts_df$Serial <- ts_df$DeployID
+
+dy_DepthTS(ts_df)
+```
+
+Adding night and twilight shadings:
+```{r, collapse=TRUE}
+ts_df$Lon <- 5; ts_df$Lat <- 43
+dy_DepthTS(ts_df)
+```
+
+Some further arguments:
+```{r, collapse=TRUE}
+dy_DepthTS(ts_df, xlim = unique(ts_df$date)[2:3], plot_DayTimePeriods = FALSE, doRangeSelector= FALSE)
+```
+
+
+Remove grid, plot points:
+```{r, collapse=TRUE}
+library(dygraphs)
+dg <- dy_DepthTS(ts_df, xlim = unique(ts_df$date)[2:3], plot_DayTimePeriods = FALSE, drawPoints = TRUE)
+dg <- dyOptions(dg,drawGrid=FALSE)
+dg
+```
+
+### Gaps in the Time Series Data
+`RchivalTag` fills gaps with NAs. While `plot_DepthTS` can also deal with data missing data gaps, `dy_DepthTS` connects subsequent points, ignoring subsequent records, including data gaps:
+
+```{r, collapse=TRUE}
+ts_gaps <- ts_df
+ts_gaps$Depth[c(300:800)] <- NA
+ts_cut <- ts_df[-c(300:800),]
+
+plot_DepthTS(ts_gaps)
+plot_DepthTS(ts_cut) # same result
+
+```
+
+```{r, collapse=TRUE}
+dy_DepthTS(ts_gaps) ## same figure with dy_DepthTS
+dy_DepthTS(ts_cut) # connects next points!
+```
+
+### Depth-Temperature Time Series Data
+`plot_DepthTS` is a `base`-graph. So it comes with almost all the functionalities of the base plots. We could for example also add another line and axis for the temperature data.
+```{r, collapse=TRUE}
+par(mar=c(5,4,4,5)) ## change margins to add second axis label
+ts_sub <- plot_DepthTS(ts_df,xlim = c("2016-08-10","2016-08-15"),plot_DayTimePeriods = T, Return=T)
+
+par(new=T) ## plot on top of first depth time series plot
+ylim <- range(pretty(range(ts_sub$Temperature)))
+plot(ts_sub$datetime, ts_sub$Temperature, xlim=range(ts_sub$datetime), ylim = ylim, type='n',axes=F,xlab="",ylab="") # create empty plot
+lines(ts_sub$datetime, ts_sub$Temperature,col="orange") # add line
+axis(4, at = pretty(ylim)) # add axis
+mtext(side=4,"Temperature (°C)",las=0,line=2.3) # add axis label
+```
+  
+Let's create a second line for the temperature time series data with `dy_DepthTS` and `dygraphs`:
+```{r, collapse=TRUE}
+dg <- dy_DepthTS(ts_df) # run via dy_DepthTS to get shadings
+
+## manually create the same figure with a second line
+dat <- ts_df[,c("datetime","Depth","Temperature")]
+dat$datetime <- as.POSIXct(dat$datetime,tz = "UTC")
+dat_xts <- xts::xts(dat[,2:3],order.by=dat$datetime)
+dg2 <- dygraph(dat_xts) # create initial dygraph object
+dg2$x$shadings <- dg$x$shadings ## assign shadings
+
+ # define limits of y-axes
+ylim1 <- c(max(ts_df$Depth,na.rm=T),-1)
+ylim2 <- c(12,30)
+
+dg2 <- dg2 %>% dyRangeSelector() %>% 
+  dySeries("Temperature", axis = "y2") %>% ## set up second y-axis
+  dyOptions(labelsUTC = TRUE, strokeWidth = 1) %>% ## set datetime format to UTC (default is local time zone)
+  dyAxis("y", label = "Depth", valueRange = ylim1) %>% ## set limits and label of y1-axis
+  dyAxis("y2", label = "Temperature", valueRange = ylim2) ## set limits and label of y2-axis
+dg2
+
+```
+  
+Well this worked, but it was quite tricky and it's not that pretty either.
+`RchivalTag` has some additional functions to illustrate depth-temperature time series data in a much nicer way.
+One option is `plot_DepthTempTS`. In this case, adjacent depth-temperature records will be linearly interpolated.
+The outcome looks good, but is not recommended for low resolution time series data (>= 300 s sampling resolution), because the potential interpolation between distant records might be misleading (e.g. 30 degrees at the surface and 10 degrees at 400m leads to a false temperature profile, with 20 degrees at around 200 m)... .
+
+```{r, collapse=TRUE}
+library(oceanmap)
+data(cmap)
+par(mar=c(5,4,4,0)) ## change margins back to default
+plot_DepthTempTS(ts_df,xlim = c("2016-08-10","2016-08-15"))
+```
+  
+Another option is to interpolate the temperature based on daily resamples (average profiles) via the `plot_DepthTempTS_resampled`.
+Both of these functions are adaptations of `plot_DepthTS`, which means we have similar arguments (e.g. to produce night-time and twilight shadings).
+
+```{r, collapse=TRUE}
+plot_DepthTempTS_resampled(ts_df,xlim = c("2016-08-10","2016-08-15"),plot_DayTimePeriods = T)
+```
+
+Another option is to estimate the temperature profiles from external data sets. PDT-data (PAT-Style Depth-Temperature profiles) from Wildlife computers are one example for that.
+
+```{r, collapse=TRUE}
+ts_df$Temperature <- c()
+pdt_file <- system.file("example_files/104659-PDTs.csv",package="RchivalTag")
+PDT <- read_PDT(pdt_file)
+plot_DepthTempTS_resampled_PDT(ts_df,PDT,xlim = c("2016-08-10","2016-08-15"),plot_DayTimePeriods = T)
+
+```
+
+We will discuss this the different types of temperature profiles in the 3rd part of this tutorial.
+
+
+
+
+
+```
+
+
+
+
+
+
+
+

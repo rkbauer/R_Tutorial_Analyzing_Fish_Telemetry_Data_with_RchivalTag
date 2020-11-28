@@ -1,0 +1,219 @@
+---
+title: "RchivalTag Package Tutorial"
+subtitle: 'Part 3 - Daily Depth-Temperature profiles'
+
+author:
+- name: "Dr. Robert Bauer | Data Scientist & Fishery Biologist"
+  affiliation: 1
+
+address:
+- code: 1
+  #address: Alaska Fisheries Science Center, NOAA Fisheries, Seattle, Washington, USA 
+  email: marine.biologging@gmail.com
+  orcid: https://orcid.org/0000-0003-4224-8023
+  
+date: "February 10, 2020"
+bibliography: library.bib
+tags: Archival Tagging data, Satellite tags, Wildlife Computers, LOTEK
+
+
+output: 
+  uswebr::html_uswds:
+    number_sections: FALSE
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+```
+
+### Getting started:
+
+```{r, collapse=TRUE}
+## install or load package
+# install.packages("RchivalTag")
+library("RchivalTag")
+
+## Package overview:
+?RchivalTag 
+help(package="RchivalTag") ## list of functions
+```
+
+### The 3 Options to illustrate depth temperature data
+In the 2nd tutorial we already covered different ways to illustrate depth temperature data from archival tags such as
+
+1. line plots with one y-axis for the depth time series data and a second y-axis for the temperature time series data
+2. coloring of the corresponding temperature values of the depth time series records as points or interpolated line plot.
+
+Another, third option represents the daily depth-temperature profiles that can be obtained from depth-temperature time series data or PAT-Style depth temperature profiles.
+
+### PAT-Style depth-temperature profiles (PDT data):
+PAT depth temperature profiles are a special summary product from WC. They return the minimum and maximum temperature in the 8 to 16 depth bins. The bin size is always 8 m. The selection and number of depth bins depends on the behavior of the fish. If the tag went deeper than 400 m, 16 depth bins are selected, otherwise only 8. The upper and lower most depth bins are always included. The remaining 6 to 14 bins depend on the behavior preferences of the fish. Unfortunately this can influence the value of the PDT data. In case of epipelagic fish (that frequent the waters from the surface to the bottom of the thermocline and beyond), we can infer some useful information about the thermal stratification.
+But first, let's have a look on the format of a PDT file: 
+
+```{r, collapse=TRUE}
+path <- system.file("example_files",package="RchivalTag")
+setwd(path)
+PDT_raw <- read.csv("104659-PDTs.csv")
+names(PDT_raw)
+```
+We can see that all depth bins as well as the corresponding minimum and maximum temperature values are listed next to each other in the header of the PDT file. To transform this into a meaningful data.frame, RchivalTag comes with its own function to read and convert PDT files:
+
+```{r, collapse=TRUE}
+PDT <- read_PDT("104659-PDTs.csv",folder=path)
+str(PDT,1)
+```
+This looks better. We have now all depth bins and related temperature values as well as the mean temperature from the minimum and maximum temperature listed in rows. The latter is not exactly the average temperature of a depth bin, but often close to it.
+
+Like other summary products the number of PDTs per day depends on the summary period (6h, 12h, 24h). Our PDT file had a 24h summary period (which we can see from the datetime values).
+
+The PDT data itself is not yet really helpful, but we can interpolate the MeanPDT temperature values and visualize the resulting profile. RchivalTag comes with 2 functions to do this. First we interpolate the data:
+
+```{r, collapse=TRUE}
+m <- interpolate_PDTs(PDT, show_info=F)
+str(m,2)
+```
+The result is a list of stations with each station corresponding to a specific tag in the PDT file (In some cases there are several tags in one PDT file). Each station comes with a temperature matrix that is defined by the depth and date values. 
+
+We can visualize the daily interpolated depth temperature profiles by running the next chunk of code.
+```{r, collapse=TRUE}
+image_TempDepthProfiles(m[[1]])
+abline(h=30,lty="dashed",col="violet",lwd=3)
+```
+
+
+We could add some external data, like the average depth of our tagged animal on top:
+```{r}
+image_TempDepthProfiles(m[[1]])
+
+ts_file <- system.file("example_files/104659-Series.csv",package="RchivalTag")
+ts_df <- read_TS(ts_file)
+library(plyr)
+ts_stats <- ddply(ts_df,c("date"),function(x) c(avg=mean(x$Depth,na.rm=T), SD=sd(x$Depth,na.rm=T)))
+lines(ts_stats$date+.5,ts_stats$avg)
+```
+
+### Thermal stratification indicators
+This does not look not bad. It appears that our fish spent most of the time above the thermocline. But what is the depth of the thermocline? There are several definitions to estimate the thermocline and other thermal stratification indicators.
+RchivalTag can estimate several thermal stratification indicators from interpolated depth temperature profiles such as:
+
+1. tgrad - thermocline gradient (maximum temperature gradient)
+2. tcline - thermocline depth (depth corresponding to tgrad)
+3. mld, mld_0.5, mld_0.8 - different mixed layer depth definitions
+4. strat_index - stratification index (standard deviation of temperature values up to a defined depth)
+
+For more details and references, please see the documentation of the `get_thermalstrat` function.
+
+```{r, collapse=TRUE}
+# ?get_thermalstrat ## check documentation
+strat <- get_thermalstrat(m, all_info = T)
+head(strat)
+```
+
+```{r, collapse=TRUE}
+image_TempDepthProfiles(m[[1]])
+lines(strat$Date-.5,strat$tcline,col="violet",lwd=3)
+```
+### Limitations of the PDT data:
+The results above look very interesting and it underlines the informational value of the PDT data.
+It is fascinating to see which information we can get by just 8-16 temperature values.
+However, the biggest problem is the spacing of the daily PDT depth values. We can see this in the following figure.
+On 2016-08-11, the fish spent more time in deeper waters, but still above 400 m. As a result, we lack information in the relevant depth layer of the thermal stratification. Since we are the interpolation is linear, the warm water masses and thus the thermocline reaches deeper on that day than it probably should. I therefore recommend to take a look on the number of records within the first 100 m of the water column. If we have around 8 values here, the estimates are less biased.
+
+
+```{r, collapse=TRUE}
+image_TempDepthProfiles(m[[1]])
+points(PDT$date-.5,PDT$Depth,pch=19, col="grey")
+```
+
+### Daily depth-temperature profiles from time series data
+Another more accurate way, is to interpolate the depth-temperature time series data.
+The loaded PDT data actually resembles this type of data.
+
+```{r, collapse=TRUE}
+# ## step I) read sample time series data file:
+ts_file <- system.file("example_files/104659-Series.csv",package="RchivalTag")
+DepthTempTS <- read_TS(ts_file)
+M <- interpolate_TempDepthProfiles(DepthTempTS)
+image_TempDepthProfiles(M[[1]])
+```
+In the example above, we see a lot of small temperature changes in the upper 50 m.
+This is an artifact of the interpolation process and the data resolution. The time series data in the example above is a transmitted data set with a temporal resolution of 10 min. As a consequence, many depth-temperature values between the different sampling points are missing, resulting in the interpolation of distant temperature values, like in the PDT data earlier.
+Moreover, since the fish moves between different water masses, certain depths were sampled less than others, which contributes to this bias. We can avoid this, by binning the data similar to the PDT data:
+
+```{r, collapse=TRUE}
+binned_ts <- bin_TempTS(DepthTempTS,res=10)
+M2 <- interpolate_TempDepthProfiles(binned_ts,"MeanPDT", show_info = F)
+image_TempDepthProfiles(M2[[1]])
+points(binned_ts$date-.5,binned_ts$Depth,pch=19, col="grey")
+
+strat2 <- get_thermalstrat(M2, all_info = T)
+lines(strat2$Date-.5,strat2$tcline,col="violet",lwd=3)
+```
+
+The result looks quite similar. In terms of accuracy, the stratication index is less biased, and recommended for further use (e.g. in ecological modelling).
+
+### Resampling temperature data from PDT data:
+In the 2nd tutorial, we already saw how to visualize thermal profiles directly within the time series data based on resamples from interpolated PDT data.
+
+```{r, collapse=TRUE}
+ts_file <- system.file("example_files/104659-Series.csv",package="RchivalTag")
+ts_df <- read_TS(ts_file)
+ts_df$Temperature <- c()
+
+ts_df$Lon <- 5; ts_df$Lat <- 43 # manual example, please take Lon/Lat data from (GPE3) model outputs for your analysis instead. (check get_geopos-function from RchivalTag)
+ts_df <- classify_DayTime(ts_df)
+
+pdt_file <- system.file("example_files/104659-PDTs.csv",package="RchivalTag")
+PDT <- read_PDT(pdt_file)
+
+library(oceanmap)
+data(cmap)
+plot_DepthTempTS_resampled_PDT(ts_df,PDT,xlim = c("2016-08-10","2016-08-15"),plot_DayTimePeriods = T)
+```
+
+
+### Time-at-Temperature histograms from PDT data:
+Theoretically, we can use the same resamples to reconstruct Time-at-Depth histograms. The accuracy of such estimates depends on the temperature bins as well as the accuracy of the PDT data. 
+
+```{r, collapse=TRUE}
+ts_file <- system.file("example_files/104659-Series.csv",package="RchivalTag")
+ts_df <- read_TS(ts_file)
+
+path <- system.file("example_files",package="RchivalTag")
+PDT <- read_PDT("104659-PDTs.csv",folder=path)
+
+m <- interpolate_PDTs(PDT,show_info = F)[[1]]
+# image_TempDepthProfiles(m)
+
+out <- c()
+for(i in 1:length(m$Date)){
+  Temp <- m$Temperature_matrix[,i]
+  add <- data.frame(date=m$Date[i],Depth=m$Depth,Temperature=Temp)
+  out <- rbind(out, add)
+}
+
+input <- ts_df; input$Temperature <- c()
+ts_PDT <- merge(input, out, by=c("date", "Depth"), all.x=T)
+tat_breaks <- c(10,12,15,17,18,19,20,21,22,23,24,27)
+
+hist_tat(ts_df, bin_breaks = tat_breaks) ## time series data
+hist_tat(ts_PDT, bin_breaks = tat_breaks) ## PDT data
+
+```
+
+### Summary:
+In this tutorial we saw the informational value and limitations of PDT and low resolution depth-temperature time series data.
+While the informational value and limitations of both data types are comparable, the selection of PDT data instead of temperature time series data increases the battery capacity and thus transmission success of pop-up archival tags. The paper by [@Bauer2015b] is highly recommended in this context.
+
+
+
+## References:
+
+
+
+
+
+
+
+
+
