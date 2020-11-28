@@ -1,0 +1,164 @@
+---
+title: "Interactive Acoustic Data Abacus Plots"
+
+author:
+  - name: "Dr. Robert Bauer | Data Scientist & Fishery Biologist"
+affiliation: 1
+
+address:
+- code: 1
+  email: marine.biologging@gmail.com
+  orcid: https://orcid.org/0000-0003-4224-8023
+  address: https://github.com/rkbauer
+
+date: "February 10, 2020"
+#bibliography: library.bib
+tags: Acoustic Tagging data, radio telemetry, Vemco, LOTEK, ATS. ETN, OTN, coastal array, receiver
+
+
+output: 
+  #pdf_document:
+  #  toc: FALSE
+  uswebr::html_uswds:
+    number_sections: FALSE
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+```
+
+### Raw detection abacus plot
+This tutorial illustrates how to create an abacus plot from raw acoustic defections from and array of several Vemco VR2W acoustic receivers.
+The example data is from an ongoing project and was masked (date vectors, receiver and transmitter ids and locations have been changed) for confidentiality reasons.
+It is freely available on https://github.com/rkbauer/interactive_abacus_plots_acoustic_data.
+The code can be applied to several types of acoustic or radio telemetry arrays such as fish passes, rivers, estuaries, or in linear coastal arrays. 
+
+```{r}
+library(here)
+load(here::here("interactive_acoustic_or_radio_telemetry_time_series_plots/raw_detections_blackwater.rd"), verbose = TRUE) 
+str(df,1)
+```
+
+First we need to transform the raw detection time series into a `dygraphs` format:
+```{r, collapse=TRUE}
+y <- "Station.Name"
+id <- "A69-9001-6765"
+input <- df[which(df$Transmitter %in% id),]
+input$datetime <- as.POSIXct(input$Date.and.Time..UTC.,tz="UTC")
+input$date <- as.Date(input$datetime)
+
+dat <- input[,c("datetime",y)]
+dat[[y]] <- as.numeric(gsub("BW ","", dat[[y]]))
+
+ds <- data.frame(dat[,y]); names(ds) <- y
+dat_xts <- xts::xts(ds,order.by = dat$datetime)
+```
+
+Let's start plotting:
+
+```{r}
+# plot arguments:
+drawPoints <- labelsUTC <- doRangeSelector <- T
+pointSize <- 4; strokeWidth <- 0; col <- "blue"; label <- y
+
+library(dygraphs)
+dg <- dygraph(dat_xts)
+dg <- dg %>% dyOptions(colors=col, drawPoints=drawPoints, pointSize=pointSize, 
+                       labelsUTC=labelsUTC, strokeWidth = strokeWidth)
+dg <- dg %>% dyAxis("y", label = "River Station")
+if(doRangeSelector) dg <- dg %>% dyRangeSelector()
+
+## the axisLabelFormatter option lets you specify a JavaScript function 
+## to format the labels on axis tick marks for display.
+dg <- dg %>% dyAxis(
+  "y",
+  axisLabelFormatter = 'function(d){return "BW" + d.toString()}',
+  axisLabelWidth = 70
+)
+
+dg
+```
+
+
+### How to add day-night shadings
+The code below is adapted from the `dy_DepthTS` function of the `RchivalTag` package which can be used to illustrate depth time series data.
+In order to add day-night shadings to our figure, we need first to estimate the daily sunrise and sunset.
+To do this, we calculate the average position per day via the `ddply` function and fill position gaps in the time series (no detection periods) via a regression spline.
+Finally we can estimate daily sunrises and sunsets based on our positions via the `get_DayTimeLimit`s` function from `RchivalTag`
+
+```{r}
+names(input)
+library(plyr)
+pos0 <- ddply(unique(input[,c("date","Longitude","Latitude")]),.(date), 
+              Lon=mean(x$Longitude),Lat=mean(x$Latitude))
+dates <- as.Date((min(input$date)-1):(max(input$date)+1),origin="1970-01-01")
+pos <- merge(pos0, data.frame(date=dates),by="date",all.y = T)
+pos$Lon <- spline(1:nrow(pos), y = pos$Lon, xout = 1:nrow(pos))$y
+pos$Lat <- spline(1:nrow(pos), y = pos$Lat, xout = 1:nrow(pos))$y
+pos$datetime <- RchivalTag:::.date2datetime(pos$date,tz = "UTC")
+head(pos)
+pos <- RchivalTag::get_DayTimeLimits(pos)
+```
+
+In the next step we need transform the periods into a `dygraph` format:
+
+```{r}
+shade_periods <- c("sunrise","sunset","dawn.ast","dusk.ast")
+shades <- unique(pos[,shade_periods])
+
+shades_list <- list()
+j <- 1
+
+for(i in 1:nrow(shades)){
+  add <- list(from=as.POSIXct(shades$sunrise[i],tz = "UTC"), 
+              to=as.POSIXct(shades$sunset[i],tz = "UTC"),
+              color="white")
+  shades_list[[j]] <- add
+  j <- j+1
+  add <- list(from=as.POSIXct(shades$dawn.ast[i],tz = "UTC"), 
+              to=as.POSIXct(shades$sunrise[i],tz = "UTC"),
+              color="lightgrey")
+  shades_list[[j]] <- add
+  j <- j+1
+  add <- list(from=as.POSIXct(shades$dusk.ast[i],tz = "UTC"), 
+              to=as.POSIXct(shades$sunset[i],tz = "UTC"),
+              color="lightgrey")
+  shades_list[[j]] <- add
+  j <- j+1
+}
+
+```
+
+Now we can add the formated shadings to the existing `dygraph` object:
+
+```{r}
+## set background to grey
+dg <- dyShading(dg, 
+                from = pos$datetime[1] , 
+                to = tail(pos$datetime,1),
+                color = "darkgrey" )
+
+## add twilight and daytime shadings
+for( period in shades_list ) {
+  dg <- dyShading(dg, 
+                  from = period$from , 
+                  to = period$to,
+                  color = period$color)
+  dg <- dyAnnotation(dg, 
+                     x = mean(c(period$from,period$to)), 
+                     text = period$label, 
+                     attachAtBottom=T)
+}
+
+dg
+```
+
+You can further edit the object `dg` of this plot via the `dygraphs` package (https://rstudio.github.io/dygraphs/).
+
+Enjoy coding!
+
+
+
+
+
+
