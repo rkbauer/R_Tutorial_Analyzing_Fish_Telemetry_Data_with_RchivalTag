@@ -1,0 +1,78 @@
+---
+title: "RchivalTag Package Tutorial"
+subtitle: 'supporting material for the RchivalTag package'
+
+author:
+- name: "Dr. Robert Bauer | Data Scientist & Fishery Biologist"
+  affiliation: 1
+
+address:
+- code: 1
+  #address: Alaska Fisheries Science Center, NOAA Fisheries, Seattle, Washington, USA 
+  email: marine.biologging@gmail.com
+  orcid: https://orcid.org/0000-0003-4224-8023
+  
+date: "February 10, 2020"
+bibliography: library.bib
+tags: Archival Tagging data, Satellite tags, Wildlife Computers, LOTEK
+
+
+output: 
+  uswebr::html_uswds:
+    number_sections: FALSE
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+```
+
+
+## Motivation and background:
+The idea behind the [RchivalTag](https://github.com/rkbauer/R_Tutorial_Analyzing_Fish_Telemetry_Data_with_RchivalTag)-package and this tutorial is to facilitate the analysis and visualization of archival and pop-up archival tagging data within R.
+The package (and tutorial) focuses on mainly on the following data products:
+
+1. Read-in functions for different archival tag data products
+2. Time-at-Depth (TaD) and Time-at-Temperature (TaT) Histogram data
+3. Time series data (e.g. depth and temperature)
+4. PAT-style Depth Temperature profiles (PDT) data
+5. Tracks (Geolocation Estimates and Likelihood Areas from light levels, depth and temperature)
+
+For more details see below as well as the package-documentation [@Bauer2020]:
+```{r, collapse=TRUE}
+## install or load package
+# install.packages("RchivalTag")
+library("RchivalTag")
+
+## Package overview:
+?RchivalTag 
+help(package="RchivalTag") ## list of functions
+```
+
+## Details 
+
+### TaD-/TaT-histogram data
+- The package allows to read and generate standard summary data products (TaD-/TaT-profiles, see above) from recovered or transmitted time series data sets as well as to merge and visualize such summary data products from different tag setups/tagging programs. For more information on these data products, please see: [@WildlifeComputers2019; @Bauer2017a]
+
+### Depth and temperature time series data
+- (interactive) data visualization, optionally highlighting temperature records and daytime differences (dawn, day, dusk, night).
+
+### Daily Depth-temperature time series data
+- data visualization and examination of the thermal stratification of the water column (i.e. thermocline depth, gradient and stratification index), based on previously interpolated depth-temperature time series data or PAT Style depth temperature profiles (PDT). The paper by [@Bauer2015b] is highly recommended in this context.
+
+### Visualizing Geolocation Estimates and Likelihood Areas
+- The newest version of [RchivalTag](https://github.com/rkbauer/R_Tutorial_Analyzing_Fish_Telemetry_Data_with_RchivalTag) includes a set of functions to illustrate geolocation estimates and likelihood areas from archival tags in (interactive) figures (e.g. see ggplot_geopos(), ggplotly_geopos() and leaflet_geopos()).
+
+
+## Compatability
+So far, the package is mainly adapted for (pop-up) archival tagging data from [Wildlife Computers](https://wildlifecomputers.com/) and [LOTEK](https://www.lotek.com/) PSAT tags, but can also be applied to data from other tag manufacturers (e.g. see ts2histos() in order to calculate TaD & TaT-frequencies from time series data). Function examples are based on the transmitted data sets of a miniPAT-tag from the [BLUEMED-project](http://bluemed-project.com/), funded by the French National Research Agency ([ANR](http://www.agence-nationale-recherche.fr)).
+
+
+## References
+
+
+
+
+
+
+
+

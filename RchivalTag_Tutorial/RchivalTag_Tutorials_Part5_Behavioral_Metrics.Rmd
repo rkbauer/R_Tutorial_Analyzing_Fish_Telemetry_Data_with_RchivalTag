@@ -1,23 +1,38 @@
 ---
 title: "RchivalTag Package Tutorial"
 subtitle: 'Part 5 - Behavioral metrics'
-author: "Dr. Robert Bauer | Data Scientist & Fishery Biologist"
+
+author:
+- name: "Dr. Robert Bauer | Data Scientist & Fishery Biologist"
+  affiliation: 1
+
+address:
+- code: 1
+  #address: Alaska Fisheries Science Center, NOAA Fisheries, Seattle, Washington, USA 
+  email: marine.biologging@gmail.com
+  orcid: https://orcid.org/0000-0003-4224-8023
+  
 date: "February 10, 2020"
 bibliography: library.bib
-output: html_document
 tags: Archival Tagging data, Satellite tags, Wildlife Computers, LOTEK
+
+
+output: 
+  uswebr::html_uswds:
+    number_sections: FALSE
 ---
 
 ### Principle (Pop-up)-Archival Tagging Data:
 
-1. TAD, TAT plots per individual and all animals, season
-2. PDT plot with depth tracks
-3. time series data (e.g. depth and temperature)
-4. tracks (Geolocation Estimates and Likelihood Areas from light levels, depth and temperature)
+1. Read-in functions for different archival tag data products
+2. Time-at-Depth (TaD) and Time-at-Temperature (TaT) Histogram data
+3. Time series data (e.g. depth and temperature)
+4. PAT-style Depth Temperature profiles (PDT) data
+5. Tracks (Geolocation Estimates and Likelihood Areas from light levels, depth and temperature)
 
 ### Getting started:
 
-```{r}
+```{r, collapse=TRUE}
 ## install or load package
 # install.packages("RchivalTag")
 library("RchivalTag")
@@ -28,25 +43,18 @@ help(package="RchivalTag") ## list of functions
 ```
 
 ### Behavioral metrics
-Behavioral metrics are an important component of many ecological model approaches such as habitat models or behavior models. The choice of a suitable metric depends on the research question (e.g. the percentage of time spent in a specific depth layer [@Bauer2017b, @Bauer2020], or the average depth preferences). However, in many cases, the data availability limits this choice. This concerns in particular pop-up archival tags with often limited transmission capacities.
+Behavioral metrics are an important component of many ecological model approaches such as habitat models or behavior models. The choice of a suitable metric depends on the research question (e.g. the percentage of time spent in a specific depth layer [@Bauer2017a, @Bauer2020], or the average depth preferences). However, in many cases, the data availability limits this choice. This concerns in particular pop-up archival tags with often limited transmission capacities.
 
 One interesting behavioral metric is the average depth at which our tagged animal was located. We could estimate the average depth (per day) from depth time series data. Histogram data could represent a 
 
 
-Another
-
-In this 5th tutorial, we will learn how to 
-
 #### How to get behavioral metrics from histogram data:
 
-Although histogram datasets are an exemple of percentage data and thus not considered continuous, we can derive continuous behavioral metrics from it that can for instance be used for model approaches such as GAMs etc. [@Bauer2017b]. Particular useful and accurate in this regard is the average depth and it's standarrd deviation that is automatically generated when we read in the histogram data.
-
-
-option is to estimate 
+Although histogram data sets are an example of percentage data and thus not considered continuous, we can derive continuous behavioral metrics from it that can for instance be used for model approaches such as GAMs etc. [@Bauer2017a]. Particular useful and accurate in this regard is the average depth and it's standard deviation that is automatically generated when we read in the histogram data.
 
 
 
-```{r}
+```{r, collapse=TRUE}
 # get histogram data with histogram-derived average depth and temperature values
 hist_dat_1 <- read_histos(system.file("example_files/104659-Histos.csv",package="RchivalTag"))
 hist_df <- hist_dat_1$TAD$DeployID.15P1019_Ptt.104659$df
@@ -62,7 +70,7 @@ But how accurate is this estimation? We can check this with time series data:
 ### Cross validating the accuracy of behavioral metrics with depth time series data:
 RchivalTag comes with it's own functions to read time series data (from Wildlife Comouters and LOTEK).
 
-```{r}
+```{r, collapse=TRUE}
 ts_file <- system.file("example_files/104659-Series.csv",package="RchivalTag")
 ts_df <- read_TS(ts_file)
 head(ts_df)
@@ -101,8 +109,8 @@ mean(avg1-avg2)
 ```
 As we can see, the data is highly proportional and thus correlated. However, the accuracy of the average depth estimates from the original histogram data are somewhat low. It generally depends on the selection of the histogram bins and in relation to that the depth preferences of the fish species. So be cautious when using and interpreting these estimates.
 
+## References
 
-```
 
 
 

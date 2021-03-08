@@ -90,7 +90,7 @@ Interestingly, stops now at Bin12 and includes some new columns:
 *  nrec (the number of records)  
 *  duration (the summary period in hours, here 24h)  
 *  tstep (the time difference to the next record)  
-*  nperc_24h (the percentage of data available)  
+*  nperc_dat (the percentage of data available)  
 
 Since our tag started recording at 8am the first day holds roughly 66% of the data. In general, we don't like to include days with a lot of gaps in our histograms. This will become important when we construct histogram data from time series data since the latter can be quite "gappy".
 
@@ -242,7 +242,7 @@ meta
 Deployment start and end dates need to be termed `dep.date` and `pop.date`, respectively. At least one more column to identify the tag (e.g. via its Serial or DeployID) are required. This column as well as other columns of the meta file can be added to the plot via the `fields` argument of the `plot_data_coverage` function.
 
 ```{r, fig.width=12.5,fig.height=4, collapse=TRUE}
-plot_data_coverage(hist_dat_combined,type="tad",type2="nperc_24h",na.omit = F,meta=meta, 
+plot_data_coverage(hist_dat_combined,type="tad",type2="nperc_dat",na.omit = F,meta=meta, 
                    Identifier = "DeployID",fields=c("DeployID","Ptt"))
 ```
 
@@ -253,7 +253,7 @@ plot_data_coverage(hist_dat_combined,type="tad",type2="nperc_24h",na.omit = F,me
 #### 6h/12h histogram data:
 As mentioned earlier, the summary period of the histogram data (and other summary data products for WC tags) can be defined during the tag programming stage as 6h, 12h, 24h. However, the selection of a higher resolution, also increases the amount of data that needs to be transmitted, which is generally limited by the battery capacity of the tag  and/or the satellite coverage at its transmission location. Especially when you select longer deployment periods and several data products, this could lead to very gappy data.
 Moreover, the timing of the 6h and 12h periods is often not related to the timing of sunrise and sunset (but to the UTC time), which makes them difficult to interpret. I would therefore not recommend to select such data. Please note that it is actually possible to estimate and plot day-night histograms from time series data. At the end of this tutorial we will learn how to do this
-The current version of `RchivalTag` merges the 6h and 12h histogram data to 24h periods. (Please recall: The column `nperc_24h` indicates the data coverage in percent.)
+The current version of `RchivalTag` merges the 6h and 12h histogram data to 24h periods. (Please recall: The column `nperc_dat` indicates the data coverage in percent.)
 
 ```{r, collapse=TRUE}
 hist_file <- system.file("example_files/67851-12h-Histos.csv",package="RchivalTag")
@@ -270,7 +270,7 @@ df <- df[which(df$tstep == 12),]
 df$tperiod <- "0:00 - 12:00"
 df$tperiod[grep("12:00:00",df$datetime)] <- "12:00 - 24:00"
 tad_breaks <- hist_12h$TAD$DeployID.67851_Ptt.67851$bin_breaks
-df$nperc_24h <- 100 # necessary to avoid error due to low data availability
+df$nperc_dat <- 100 # necessary to avoid error due to low data availability
 hist_tad(df, bin_breaks = tad_breaks, split_by = "tperiod")
 ```
 
