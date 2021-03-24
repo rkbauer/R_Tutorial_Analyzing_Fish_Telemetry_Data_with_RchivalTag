@@ -3,7 +3,6 @@ title: "RchivalTag Package Tutorial"
 subtitle: 'Part 4 - Geolocation Estimates and Likelihood Areas'
 author: "Dr. Robert Bauer | Data Scientist & Fishery Biologist"
 date: "February 10, 2020"
-bibliography: library.bib
 output: html_document
 tags: Archival Tagging data, Satellite tags, Wildlife Computers, LOTEK
 ---
@@ -194,6 +193,7 @@ ggobj7 <- ggplot_geopos(kmz_file1)
 ggobj7
 ggplotly_geopos(ggobj7)
 ```
+
 ```{r, message=FALSE}
 kmz_file2 <- system.file("example_files/15P0986-15P0986-2-GPE3.kmz",package="RchivalTag")
 ggobj8 <- ggplot_geopos(kmz_file2)
@@ -208,7 +208,7 @@ k2 <- get_geopos(kmz_file2)
 k3 <- rbind(k1,k2)
 
 ggobj3 <- ggplot_geopos(k3)
-ggobj3
+# ggobj3 <- ggplot_geopos(k3,ggobj = ggplotmap("lion"))
 ggplotly_geopos(ggobj3)
 
 ```
@@ -225,6 +225,9 @@ p2
 ggplotly_geopos(p2)
 
 ```
+
+## leaflet visualizsations with RchivalTag:
+
 ```{r, collapse=TRUE, message=FALSE}
 csv_file <- system.file("example_files/15P1019-104659-1-GPE3.csv",package="RchivalTag")
 pos <- get_geopos(csv_file) ## show tracks as line plot
@@ -239,20 +242,26 @@ k1 <- get_geopos(kmz_file)
 kmz_file2 <- system.file("example_files/15P0986-15P0986-2-GPE3.kmz",package="RchivalTag")
 k2 <- get_geopos(kmz_file2)
 k0 <- k3 <- rbind(k1,k2)
-ggobj2 <- ggplot_geopos(k0,ggobj = ggplotmap("lion"))
-ggobj2
-ggplotly_geopos(ggobj2)
 
 library(leaflet)
 leaflet_geopos(k0,key="DeployID",collapsedLayers = F) %>% addMiniMap()
 leaflet_geopos(k0,key="DeployID",showSlideBar = T)
 ```
-
+We can add further functionalities to the leaflet map, such as a mini map to illustrate the zoom area.
 ```{r, message=FALSE}
 k1$ID <- "12"
 k1$Serial <- k1$DeployID <- c() # delete Serial field
 
-leaflet_geopos(k1,key="ID")  %>% addMiniMap()
+map <- leaflet_geopos(k1,key="ID")  %>% addMiniMap()
+map
+```
+
+More extensions are provided by the leaflet.extras and leaflet.extras2 packages.
+```{r}
+library(leaflet.extras)
+map %>% addMeasure(position = "bottomleft", primaryLengthUnit = "meters", #primaryAreaUnit = "hectares", 
+                   activeColor = "#3D535D", completedColor = "#7D4479", localization = "en", popupOptions = list(autoClose = FALSE,latlngFormat = "DD")) %>% 
+  addSearchOSM(options = searchOptions(autoCollapse = TRUE, minLength = 2, hideMarkerOnCollapse = TRUE, moveToLocation = TRUE, zoom = 14))
 ```
 
 
