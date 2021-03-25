@@ -13,7 +13,7 @@ address:
   orcid: https://orcid.org/0000-0003-4224-8023
   
 date: "February 10, 2020"
-bibliography: library.bib
+# bibliography: library.bib
 tags: Archival Tagging data, Satellite tags, Wildlife Computers, LOTEK
 
 
@@ -116,12 +116,37 @@ ts_df$DeployID <- ts_df$Ptt <- "104659"
 
 Now let's plot this data. `RchivalTag` has several plotting functions for time series data. These include:
 
+*  `hist_tad`
+*  `ggboxplot_DepthTS_by_hour`
 *  `plot_DepthTS`
 *  `empty.plot_TS`
 *  `plot_DepthTempTS`
 *  `plot_DepthTempTS_resampled`
 *  `plot_DepthTempTS_resampled_PDT`
 *  `dy_DepthTS`
+
+In the first part of this tutorial we have seen how to read and plot histogram data, which can also be obtained from depth time series (DepthTS) data. Although histogram data is an efficient data product to provide an overall overview of general depth layer preferences, its value to analyze diel vertical behavior is limited. On the other side, analyzing DepthTS data from one ore more individual can be tricky, because of the duration and variability in these data sets. Still there are some handy functions in RchivalTag that can help to perform this job, that we will learn in a sec. For now, let's say we are interested in getting a general idea of the diel vertical behavior depth preferences (which is a good starting point of a more in-depth analysis of DepthTS data). For this purpose, RchivalTag includes the function `ggboxplot_DepthTS_by_hour`.
+
+```{r, collapse=TRUE}
+ts_file <- system.file("example_files/104659-Series.csv",package="RchivalTag")
+ts_df <- read_TS(ts_file)
+ggboxplot_DepthTS_by_hour(ts_df)
+```
+
+Let's add position data to obtain twilight and nighttime shadings:
+
+```{r, collapse=TRUE}
+ts_df$Lon <- 5; ts_df$Lat <- 43
+ts_df2 <- get_DayTimeLimits(ts_df)
+ggboxplot_DepthTS_by_hour(ts_df2,ylim=c(0,100))
+```
+
+Let's add the actual depth records on top of the boxplot (only meaningful in case of few amounts of data:
+
+```{r, collapse=TRUE}
+ggboxplot_DepthTS_by_hour(ts_df2,jitter = T,opacity = 0.1)
+```
+Now let's checkout the underlying, raw depth time series data. We can directly plot the entire data set with the `plot_DepthTS` function:
 
 ```{r, collapse=TRUE}
 plot_DepthTS(ts_df)

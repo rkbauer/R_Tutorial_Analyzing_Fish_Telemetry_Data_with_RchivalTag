@@ -231,8 +231,8 @@ ggplotly_geopos(p2)
 ```{r, collapse=TRUE, message=FALSE}
 csv_file <- system.file("example_files/15P1019-104659-1-GPE3.csv",package="RchivalTag")
 pos <- get_geopos(csv_file) ## show tracks as line plot
-leaflet_geopos(pos,key="DeployID",collapsedLayers = T) 
-# leaflet_geopos(pos,key="DeployID",showSlideBar = T)
+leaflet_geopos(pos,ID_label="DeployID",collapsedLayers = T) 
+# leaflet_geopos(pos,ID_label="DeployID",showSlideBar = T)
 ```
 
 
@@ -244,15 +244,15 @@ k2 <- get_geopos(kmz_file2)
 k0 <- k3 <- rbind(k1,k2)
 
 library(leaflet)
-leaflet_geopos(k0,key="DeployID",collapsedLayers = F) %>% addMiniMap()
-leaflet_geopos(k0,key="DeployID",showSlideBar = T)
+leaflet_geopos(k0,ID_label="DeployID",collapsedLayers = F) %>% addMiniMap()
+leaflet_geopos(k0,ID_label="DeployID",showSlideBar = T)
 ```
 We can add further functionalities to the leaflet map, such as a mini map to illustrate the zoom area.
 ```{r, message=FALSE}
 k1$ID <- "12"
 k1$Serial <- k1$DeployID <- c() # delete Serial field
 
-map <- leaflet_geopos(k1,key="ID")  %>% addMiniMap()
+map <- leaflet_geopos(k1,ID_label="ID")  %>% addMiniMap()
 map
 ```
 
