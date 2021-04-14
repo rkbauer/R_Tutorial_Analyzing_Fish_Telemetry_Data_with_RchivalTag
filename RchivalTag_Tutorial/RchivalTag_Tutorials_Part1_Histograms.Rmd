@@ -8,12 +8,12 @@ author:
 
 address:
 - code: 1
-  #address: Alaska Fisheries Science Center, NOAA Fisheries, Seattle, Washington, USA 
-  email: marine.biologging@gmail.com
+  address: Hawai'i Institute of Marine Biology, University of Hawai'i at Mānoa, Kāne'ohe, Hawai'i, United States of America
+  email: rkbauer@hawaii.edu
   orcid: https://orcid.org/0000-0003-4224-8023
   
 date: "February 10, 2020"
-bibliography: library.bib
+##bibliography: library.bib
 tags: Archival Tagging data, Satellite tags, Wildlife Computers, LOTEK
 
 
@@ -322,10 +322,7 @@ hist_tat(ts_df2, bin_breaks = tat_breaks, split_by = "daytime", do_mid.ticks = F
 Since we can convert time series data to histogram data and even split it into day-night periods, the selection of histogram files for tranmission becomes obsolete. At the same time, we can save significant battery capacities and thus improve the transmission success of other data products, including time series data. For long deployments, WC also offers to define a duty cycle by which the data gets transmitted (e.g. 3 days of data, 2 days of gaps) to save battery and thus transmission capacities. 
 Still, in some cases it might be beneficial to select histogram data over time series data for transmission (e.g. requires less ARGOS messages and thus less battery consuming, better coverage at long deployments, especially in areas of poor satellite coverage). I will give some further recommendation on how to program your tag in the next parts of this tutorial.
 
-Please bear this in mind, when you program your tag. 
-
-```
-
+Please bear this in mind, when you program your tag.
 
 
 

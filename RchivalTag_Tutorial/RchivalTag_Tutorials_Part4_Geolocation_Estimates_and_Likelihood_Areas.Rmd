@@ -206,7 +206,10 @@ k1 <- get_geopos(kmz_file1)
 k2 <- get_geopos(kmz_file2)
 
 k3 <- rbind(k1,k2)
+```
 
+
+```{r, collapse=TRUE, message=FALSE}
 ggobj3 <- ggplot_geopos(k3)
 # ggobj3 <- ggplot_geopos(k3,ggobj = ggplotmap("lion"))
 ggplotly_geopos(ggobj3)
