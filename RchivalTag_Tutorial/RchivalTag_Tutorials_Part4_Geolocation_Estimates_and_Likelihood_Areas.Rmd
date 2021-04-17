@@ -247,7 +247,7 @@ k2 <- get_geopos(kmz_file2)
 k0 <- k3 <- rbind(k1,k2)
 
 library(leaflet)
-leaflet_geopos(k0,ID_label="DeployID",collapsedLayers = F) %>% addMiniMap()
+leaflet_geopos(k0,ID_label="DeployID",collapsedLayers = F)
 leaflet_geopos(k0,ID_label="DeployID",showSlideBar = T)
 ```
 We can add further functionalities to the leaflet map, such as a mini map to illustrate the zoom area.
