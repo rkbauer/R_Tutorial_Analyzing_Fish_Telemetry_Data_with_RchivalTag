@@ -109,13 +109,7 @@ ggobj2 <- ggplot_geopos(csv_file,ggobj = ggobj)
 ggobj2
 ```
 
-And we can transform the figure to an interactive plotly-figure. (ATTENTION: This works probably only with the default map from the ggplotmap-function. Due to computational restrictions the ggplot object includes only islands and countries that are shown in the plotting region. It is therefore not recommended to zoom out of this region in the plotly widget. Click the home button if that is the case.
-
-```{r, collapse=TRUE, message=FALSE}
-ggobj <- ggplotmap("lion")
-ggobj2 <- ggplot_geopos(csv_file,ggobj = ggobj)
-ggplotly_geopos(ggobj2)
-```
+And we can transform the figure to an interactive plotly-figure. (ATTENTION: Due to computational restrictions the ggplot object includes only islands and countries that are shown in the plotting region. It is therefore not recommended to zoom out of this region in the plotly widget. Click the home button if that is the case.
 We can show the track as a line, or a dotted line and combine tracks:
 
 ```{r, collapse=TRUE, message=FALSE}
@@ -154,6 +148,7 @@ ggobj3 <- ggplot_geopos(pos3,type = "b")
 # ggobj3 <- ggplot_geopos(pos3,type = "p")
 ggplotly_geopos(ggobj3)
 ```
+
 ```{r, message=FALSE}
 ## example 1b) scatter plot from csv-file on existing landmask:
 ggobj <- oceanmap::ggplotmap('lion',grid.res = 5) # use keyword to derive area limits
@@ -168,7 +163,9 @@ ggplotly_geopos(ggobj4)
 # 
 ```
 
-
+### ggplot_geopos with netcdf-files:
+Each GPE3 model run returns also the probability surfaces of our tracks. They are more accurate to illustrate the error of the data.
+We can read and visualize them as well with the ggplot_geopos-function from RchivalTag.
 
 ```{r, collapse=TRUE, message=FALSE}
 ## example 2) probability surfaces of horizontal tracks from nc-file:
@@ -182,6 +179,8 @@ ggplotly_geopos(ggobj6)
 # pols_df <- get_geopos(nc_file)
 # ggplot_geopos(pols_df)
 ```
+
+### ggplot_geopos with kmz-files:
 
 Another much faster way to plot the probability surfaces of your tag's track is to read in kmz-file which already includes the contour lines of the 50, 95 and 99% likelihood areas that are being extracted and likewise transformed to a SpatialPolygonsDataFrame. This is much faster than the netcdf-transformation process. However, the kmz-files from WC include only a subsample (up to 50) of the GPE3 likelihood areas. The use of these files is therefore only recommended for visualization purposes. Please contact WC if you are looking for a kmz-file with the complete GPE3 likelihood areas or use the netcdf-file transformation instead.
 
@@ -228,6 +227,37 @@ p2
 ggplotly_geopos(p2)
 
 ```
+
+### ggplot_geopos with base maps:
+
+We can also add a reference layer such as the bathymetry and illustrate our tracks on top. Instead of the maxmimum likelihood tracks from the csv file you can also plot the maximum likelihood aread from kmz- or netcdf-files (see examples below). In this case you will need to add the new_scale_fill() call when creating the bathymetry-basemap for your tracks. However, a ggplotly-transformation is so far only implemented for basemaps with point data (maxmimum likelihood tracks) and not supported yet for polygon data with a basemap yet.
+
+```{r}
+library(oceanmap)
+library(dplyr)
+library(ggplot2)
+library(ggnewscale)
+data(cmap)
+h <- get.bathy(v_area = "lion",visualize = F) ## from the oceanmap package
+## note that you can also define lon and lat limits to specify your area of interest
+rs2df <- h %>% rasterToPoints() %>% ## convert raster to xyz matrix
+         as.data.frame() ## convert to data frame
+names(rs2df) <- c("Lon","Lat","Depth") ## reset names 
+ggobj <- ggplot() + geom_raster(data = rs2df, aes(x=Lon,y=Lat,fill=Depth)) 
+ggobj_with_bathy <- ggplotmap(add_to = ggobj) + 
+                        scale_fill_gradientn(colours=cmap$haxbyrev,limits=range(rs2df$Depth)) # change colorbar  
+                        #+ new_scale_fill() # allow additional fill scale in case of polygon illustrations of maximum likelihood areas from kmz- or netcdf-files
+ggobj_with_tracks <- ggplot_geopos(csv_file,ggobj = ggobj_with_bathy)
+ggobj_with_tracks
+
+kmz_file1 <- system.file("example_files/15P1019-104659-1-GPE3.kmz",package="RchivalTag")
+
+## we can convert this to an interactive plot, but may need to define a larger area
+# when downloading the bathymetry in order not to cut it
+## This works properly for point data but not for polygons with reference map (i.e. bathymetry) 
+# ggplotly_geopos(ggobj_with_tracks) 
+```
+
 
 ## leaflet visualizsations with RchivalTag:
 
