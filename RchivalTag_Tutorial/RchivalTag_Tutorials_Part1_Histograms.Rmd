@@ -47,7 +47,7 @@ Since this data is stored as a csv file, you might be tempted to read in the dat
 ## read example histogram data:
 hist_file <- system.file("example_files/104659-Histos.csv",package="RchivalTag")
 h <- read.csv(hist_file)
-head(h)
+head(h,3)
 ```
 I would not recommend this for data processing but it's actually a good way to understand the formatting of WC histogram files. As you can see, each row contains some general Information about the DeployID, Ptt, Source, Tag Type (Instr). We can also see the Date column that holds the starting point of each histogram data set in UTC. In our case the tag was probably deployed shortly before "08:10:00 07-Aug-2016", that's when the tag started to record data. The remaining columns are likewise interesting. `NumBins` gives the number of user defined bins, Bin1-72 holds the actual binned histogram data. We can see that only Bin1-Bin12 have records in the first row and that these records correspond to the TATLIMITS. The TATLIMITS are the Time-AT-Temperature LIMITS, bin breaks or ticks. In the second row, we have the actual histogram data stored in the first 11 Bins. Bin 12 is empty since it is the last bin break. We will soon learn how to plot this data. If you would open the file in MS excel or run the `tail` function in R, you would see that the Time-AT-Depth (TAD) histogram data is stored in the same file.
 
@@ -81,18 +81,46 @@ We can see that the DeployID.15P1019_Ptt.104659-list contains two data objects:
 
 ```{r, collapse=TRUE}
 hist_dat_1$TAD$DeployID.15P1019_Ptt.104659$bin_breaks
-head(hist_dat_1$TAD$DeployID.15P1019_Ptt.104659$df)
+head(hist_dat_1$TAD$DeployID.15P1019_Ptt.104659$df,3)
 ```
 Interestingly, stops now at Bin12 and includes some new columns: 
   
 *  avg (which is the average depth or temperature inferred from the TAD/TAT data, respectively)  
 *  SD (the standard deviation of the TAD/TAT data)  
-*  nrec (the number of records)  
+*  nrec (the number of records within the time interval, i.e. hours of data for histogram files or total number of depth/temperature records in case of converted time series data)  
 *  duration (the summary period in hours, here 24h)  
-*  tstep (the time difference to the next record)  
+*  tstep (the time interval of the histogram data)  
 *  nperc_dat (the percentage of data available)  
 
 Since our tag started recording at 8am the first day holds roughly 66% of the data. In general, we don't like to include days with a lot of gaps in our histograms. This will become important when we construct histogram data from time series data since the latter can be quite "gappy".
+
+### Cutting data
+You might want to cut off the first and last day(s) of the tag data to remove any influence of tagging behavior (first days) or when the tag has popped off the animal (last days).
+To do so, you would need to use a meta file, that you should create separately via excel to specify and comment all the tag deployments. Once this is done, you can run the following code to cut off the first 3 and the last 2 deployment days:
+
+```{r, collapse=TRUE}
+cut_start <- 3; cut_end <- 2
+library(dplyr)
+
+## define or read meta file (each row corresponds to 1 animal)
+meta <- data.frame(DeployID="15P1019", 
+                   Ptt="104659", 
+                   dep.date=as.Date("2016-08-07"), 
+                   pop.date=as.Date("2016-08-21"))
+
+for(i in 1:length(hist_dat_1$TAD)){
+  dat <- hist_dat_1$TAD[[i]]$df
+  ## filter the meta data, assuming that the DeployID is unique across animals
+  mmeta <- meta %>% filter(DeployID == dat$DeployID[1]) 
+  dates <- c(mmeta$dep.date:(mmeta$dep.date+cut_start),
+             mmeta$pop.date:(mmeta$pop.date-cut_end))
+  dat %>% filter(!(date %in% as.Date(dates,origin="1970-01-01")))
+  hist_dat_1$TAD[[i]]$df <- dat
+}
+```
+
+
+#### How to plot histogram data:
 
 Now let's plot the TAD data:  
 ```{r}
@@ -258,13 +286,13 @@ The current version of `RchivalTag` merges the 6h and 12h histogram data to 24h 
 ```{r, collapse=TRUE}
 hist_file <- system.file("example_files/67851-12h-Histos.csv",package="RchivalTag")
 hist_24h <- read_histos(hist_file,min_perc=75)
-head(hist_24h$TAD$DeployID.67851_Ptt.67851$df)
+head(hist_24h$TAD$DeployID.67851_Ptt.67851$df,3)
 ```
 
 However, it is possible to avoid this merge, and also to plot 12h histogram data side by side (back to back):
 ```{r, collapse=TRUE}
 hist_12h <- read_histos(hist_file,min_perc=0)
-head(hist_12h$TAD$DeployID.67851_Ptt.67851$df)
+head(hist_12h$TAD$DeployID.67851_Ptt.67851$df,3)
 df <- hist_12h$TAD$DeployID.67851_Ptt.67851$df
 df <- df[which(df$tstep == 12),]
 df$tperiod <- "0:00 - 12:00"
@@ -288,7 +316,7 @@ Since the tag has been deployed after midnight, the first depth and temperature 
 ```{r, collapse=TRUE}
 ts_file <- system.file("example_files/104659-Series.csv",package="RchivalTag")
 ts_df <- read_TS(ts_file)
-head(ts_df)
+head(ts_df,3)
 ```
 Let's transform this to a 24h histogram:
 ```{r, collapse=TRUE}
@@ -306,7 +334,7 @@ hist_tat(ts_df, bin_breaks = tat_breaks) # plot time-at-temperature data
 ```{r, collapse=TRUE}
 ts_df$Lat <- 4; ts_df$Lon <- 42.5 ## required geolocations to estimate daytime
 ts_df2 <- classify_DayTime(get_DayTimeLimits(ts_df)) # estimate daytime
-head(ts_df2)
+head(ts_df2,3)
 
 hists_ts2 <- ts2histos(ts_df2, tad_breaks = tad_breaks, split_by = "daytime")
 hist_tad(hists_ts2,space=1)
